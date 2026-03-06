@@ -79,6 +79,16 @@ function getTakenIds(gameState, cardType, excludeReceiver = null) {
     .filter(Boolean);
 }
 
+// Cartes déjà proposées par d'autres voteurs pour la même receveure — retirées du paquet
+function getAlreadyProposedIds(gameState, receiverName, voterName, cardType) {
+  const votes = cardType === 'animal'
+    ? (gameState[receiverName]?.animalVotes || {})
+    : (gameState[receiverName]?.qualityVotes || {});
+  return Object.entries(votes)
+    .filter(([voter]) => voter !== voterName)
+    .map(([, cardId]) => cardId);
+}
+
 function initGameState() {
   const s = {};
   PLAYERS.forEach(p => {
@@ -432,10 +442,11 @@ export default function App() {
                 const isDone = phase === 'done';
                 const hasVoted = action === 'voted';
                 const isTodo = action === 'todo';
+                const isClickable = !isDone && isTodo;
                 return (
                   <div key={p}
                     className={`vote-row${isTodo?' todo':''}${hasVoted?' voted':''}${isDone?' done-r':''}`}
-                    onClick={() => { if (!isDone) { setReceiver(p); setView('vote'); } }}>
+                    onClick={() => { if (isClickable) { setReceiver(p); setView('vote'); } }}>
                     <div>
                       <div className="vote-row-name">{p}</div>
                       <div style={{ fontSize:'.7rem',color:'var(--mist)',marginTop:'.15rem' }}>{phaseLabel(p)}</div>
@@ -639,7 +650,10 @@ function ProposeView({ gs, receiver, me, cardType, selCard, setSelCard, submitPr
   const others = PLAYERS.filter(p => p !== receiver);
   const voted = Object.keys(votes);
   const remaining = others.filter(p => !voted.includes(p));
+  // Bug 1 fix: exclure les cartes déjà winners globaux ET les cartes déjà proposées par d'autres pour cette receveure
   const takenIds = getTakenIds(gs, cardType, receiver);
+  const alreadyProposedIds = getAlreadyProposedIds(gs, receiver, me, cardType);
+  const excludedIds = [...new Set([...takenIds, ...alreadyProposedIds])];
   const myVote = votes[me];
 
   if (myVote) {
@@ -659,7 +673,7 @@ function ProposeView({ gs, receiver, me, cardType, selCard, setSelCard, submitPr
     );
   }
 
-  const hand = getHandFor(receiver, me, cardType, takenIds);
+  const hand = getHandFor(receiver, me, cardType, excludedIds);
   return (
     <>
       <Stepper phase={`${cardType}-propose`} />
@@ -671,7 +685,7 @@ function ProposeView({ gs, receiver, me, cardType, selCard, setSelCard, submitPr
       <div className="stitle">Vos 7 cartes {isAnimal?'animal':'qualité'}</div>
       <div className="cards-grid">
         {hand.map(c => (
-          <div key={c.id} className={`card${selCard===c.id?' sel':''}${takenIds.includes(c.id)?' taken':''}`} onClick={() => setSelCard(c.id)}>
+          <div key={c.id} className={`card${selCard===c.id?' sel':''}`} onClick={() => setSelCard(c.id)}>
             <span className="card-em">{c.emoji}</span>
             <div className="card-name">{c.name}</div>
             <div className="card-desc">{c.desc}</div>
