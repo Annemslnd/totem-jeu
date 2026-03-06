@@ -203,24 +203,25 @@ function realVotes(votesObj) {
 }
 
 function getPhaseFor(ps) {
-  if (!ps) return 'animal-propose';
+  if (!ps) return 'propose';
   const voters = PLAYERS.length - 1;
-  if (ps.qualityWinner) return 'done';
-  if (ps.animalWinner) return Object.keys(realVotes(ps.qualityVotes)).length >= voters ? 'quality-runoff' : 'quality-propose';
-  return Object.keys(realVotes(ps.animalVotes)).length >= voters ? 'animal-runoff' : 'animal-propose';
+  // Done quand les deux winners sont définis
+  if (ps.animalWinner && ps.qualityWinner) return 'done';
+  // Runoff quand toutes les propositions sont reçues
+  if (Object.keys(realVotes(ps.animalVotes)).length >= voters) return 'runoff';
+  // Sinon on attend les propositions
+  return 'propose';
 }
 
 // Ce qu'il reste à faire pour un voteur sur une receveure donnée
 function getPendingActionsFor(gs, me, receiver) {
   if (me === receiver) return [];
   const ps = gs[receiver];
-  if (!ps) return ['animal-propose'];
+  if (!ps) return ['propose'];
   const phase = getPhaseFor(ps);
   if (phase === 'done') return [];
-  if (phase === 'animal-propose') return realVotes(ps.animalVotes)[me] ? [] : ['animal-propose'];
-  if (phase === 'animal-runoff') return realVotes(ps.animalRunoffVotes)[me] ? [] : ['animal-runoff'];
-  if (phase === 'quality-propose') return realVotes(ps.qualityVotes)[me] ? [] : ['quality-propose'];
-  if (phase === 'quality-runoff') return realVotes(ps.qualityRunoffVotes)[me] ? [] : ['quality-runoff'];
+  if (phase === 'propose') return realVotes(ps.animalVotes)[me] ? [] : ['propose'];
+  if (phase === 'runoff') return realVotes(ps.animalRunoffVotes)[me] ? [] : ['runoff'];
   return [];
 }
 
@@ -457,15 +458,12 @@ export default function App() {
     const ps = gs[name];
     const voters = PLAYERS.length - 1;
     if (ps.qualityWinner) return '🌿 Totem complet';
-    if (ps.animalWinner) {
-      const qv = Object.keys(realVotes(ps.qualityVotes)).length;
-      const qrv = Object.keys(realVotes(ps.qualityRunoffVotes)).length;
-      if (qv >= voters) return `Vote final ${qrv}/${voters}`;
-      return `Propositions ${qv}/${voters}`;
+    const phase = getPhaseFor(ps);
+    if (phase === 'runoff') {
+      const arv = Object.keys(realVotes(ps.animalRunoffVotes)).length;
+      return `Vote final ${arv}/${voters}`;
     }
     const av = Object.keys(realVotes(ps.animalVotes)).length;
-    const arv = Object.keys(realVotes(ps.animalRunoffVotes)).length;
-    if (av >= voters) return `Vote final ${arv}/${voters}`;
     return `Propositions ${av}/${voters}`;
   };
 
@@ -543,7 +541,7 @@ export default function App() {
                 const pending = getPendingActionsFor(gs, me, p);
                 const phase = getPhaseFor(gs[p]);
                 const isDone = phase === 'done';
-                const isRunoff = phase === 'animal-runoff' || phase === 'quality-runoff';
+                const isRunoff = phase === 'runoff';
                 const hasPending = pending.length > 0;
                 const isClickable = hasPending;
                 return (
@@ -611,18 +609,15 @@ export default function App() {
             <div className={`sync-dot${busy?' busy':''}`}/>
           </div>
           <div className="game-body">
-            {/* Phase propose : animal + qualité en une seule page */}
-            {(phase === 'animal-propose' || phase === 'quality-propose') &&
+            {phase === 'propose' &&
               <CombinedProposeView
                 gs={gs} receiver={voteTarget} me={me}
                 selAnimal={selAnimal} setSelAnimal={setSelAnimal}
                 selQuality={selQuality} setSelQuality={setSelQuality}
                 submitBothProposals={submitBothProposals}
-                phase={phase}
               />
             }
-            {/* Phase runoff : animal + qualité ensemble */}
-            {(phase === 'animal-runoff' || phase === 'quality-runoff') &&
+            {phase === 'runoff' &&
               <CombinedRunoffView
                 gs={gs} receiver={voteTarget} me={me}
                 selAnimal={selAnimal} setSelAnimal={setSelAnimal}
@@ -694,7 +689,7 @@ export default function App() {
 
 // ── CombinedProposeView ───────────────────────────────────
 // Animal + Qualité sur une seule page, soumis ensemble
-function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQuality, setSelQuality, submitBothProposals, phase }) {
+function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQuality, setSelQuality, submitBothProposals }) {
   const ps = gs[receiver] || {};
   const aVotes = realVotes(ps.animalVotes);
   const qVotes = realVotes(ps.qualityVotes);
@@ -885,19 +880,12 @@ function CombinedRunoffView({ gs, receiver, me, selAnimal, setSelAnimal, selQual
 function ReceiverWaitView({ gs, name, phase }) {
   const voters = PLAYERS.length - 1;
   const ps = gs[name] || {};
-  const isRunoff = phase === 'animal-runoff' || phase === 'quality-runoff';
-  const votes = realVotes({
-    'animal-propose': ps.animalVotes,
-    'animal-runoff': ps.animalRunoffVotes,
-    'quality-propose': ps.qualityVotes,
-    'quality-runoff': ps.qualityRunoffVotes,
-  }[phase]);
+  const isRunoff = phase === 'runoff';
+  const votes = realVotes(isRunoff ? ps.animalRunoffVotes : ps.animalVotes);
   const voted = Object.keys(votes).length;
   const labels = {
-    'animal-propose': 'Vos amies choisissent votre animal et votre qualité en secret…',
-    'animal-runoff': 'Vos amies votent pour votre animal totem définitif…',
-    'quality-propose': 'Vos amies choisissent votre qualité en secret…',
-    'quality-runoff': 'Vos amies votent pour votre qualité totem définitif…',
+    'propose': 'Vos amies choisissent votre animal et votre qualité en secret…',
+    'runoff': 'Vos amies votent pour votre totem définitif…',
   };
   return (
     <>
