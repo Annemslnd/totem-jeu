@@ -174,9 +174,9 @@ function getGlobalTakenIds(gameState, cardType, excludeReceiver) {
 
 // Cartes déjà proposées par d'AUTRES voteurs pour cette receveure
 function getAlreadyProposedIds(gameState, receiverName, voterName, cardType) {
-  const votes = cardType === 'animal'
-    ? (gameState[receiverName]?.animalVotes || {})
-    : (gameState[receiverName]?.qualityVotes || {});
+  const votes = realVotes(cardType === 'animal'
+    ? gameState[receiverName]?.animalVotes
+    : gameState[receiverName]?.qualityVotes);
   return Object.entries(votes)
     .filter(([voter]) => voter !== voterName)
     .map(([, cardId]) => cardId);
@@ -185,21 +185,29 @@ function getAlreadyProposedIds(gameState, receiverName, voterName, cardType) {
 function initGameState() {
   const s = {};
   PLAYERS.forEach(p => {
+    // On utilise null pour les champs vides: Firebase ne supprime pas un noeud
+    // dont les champs ont des valeurs explicites (même null).
     s[p] = {
-      animalVotes: {}, animalRunoffVotes: {}, animalWinner: null,
-      qualityVotes: {}, qualityRunoffVotes: {}, qualityWinner: null,
+      animalVotes: { _init: true }, animalRunoffVotes: { _init: true }, animalWinner: null,
+      qualityVotes: { _init: true }, qualityRunoffVotes: { _init: true }, qualityWinner: null,
     };
   });
   return s;
 }
 
 // Phase globale d'une receveure
+function realVotes(votesObj) {
+  if (!votesObj) return {};
+  const { _init, ...real } = votesObj;
+  return real;
+}
+
 function getPhaseFor(ps) {
   if (!ps) return 'animal-propose';
   const voters = PLAYERS.length - 1;
   if (ps.qualityWinner) return 'done';
-  if (ps.animalWinner) return Object.keys(ps.qualityVotes || {}).length >= voters ? 'quality-runoff' : 'quality-propose';
-  return Object.keys(ps.animalVotes || {}).length >= voters ? 'animal-runoff' : 'animal-propose';
+  if (ps.animalWinner) return Object.keys(realVotes(ps.qualityVotes)).length >= voters ? 'quality-runoff' : 'quality-propose';
+  return Object.keys(realVotes(ps.animalVotes)).length >= voters ? 'animal-runoff' : 'animal-propose';
 }
 
 // Ce qu'il reste à faire pour un voteur sur une receveure donnée
@@ -209,10 +217,10 @@ function getPendingActionsFor(gs, me, receiver) {
   if (!ps) return ['animal-propose'];
   const phase = getPhaseFor(ps);
   if (phase === 'done') return [];
-  if (phase === 'animal-propose') return (ps.animalVotes || {})[me] ? [] : ['animal-propose'];
-  if (phase === 'animal-runoff') return (ps.animalRunoffVotes || {})[me] ? [] : ['animal-runoff'];
-  if (phase === 'quality-propose') return (ps.qualityVotes || {})[me] ? [] : ['quality-propose'];
-  if (phase === 'quality-runoff') return (ps.qualityRunoffVotes || {})[me] ? [] : ['quality-runoff'];
+  if (phase === 'animal-propose') return realVotes(ps.animalVotes)[me] ? [] : ['animal-propose'];
+  if (phase === 'animal-runoff') return realVotes(ps.animalRunoffVotes)[me] ? [] : ['animal-runoff'];
+  if (phase === 'quality-propose') return realVotes(ps.qualityVotes)[me] ? [] : ['quality-propose'];
+  if (phase === 'quality-runoff') return realVotes(ps.qualityRunoffVotes)[me] ? [] : ['quality-runoff'];
   return [];
 }
 
@@ -395,8 +403,8 @@ export default function App() {
   const resolveRunoffIfReady = (state, receiver, cardType) => {
     const ps = state[receiver];
     const voters = PLAYERS.length - 1;
-    const rv = cardType === 'animal' ? ps.animalRunoffVotes : ps.qualityRunoffVotes;
-    if (!rv || Object.keys(rv).length < voters) return state;
+    const rv = realVotes(cardType === 'animal' ? ps.animalRunoffVotes : ps.qualityRunoffVotes);
+    if (Object.keys(rv).length < voters) return state;
     const counts = {};
     Object.values(rv).forEach(cid => { counts[cid] = (counts[cid]||0)+1; });
     const takenIds = getGlobalTakenIds(state, cardType, receiver);
@@ -586,7 +594,6 @@ export default function App() {
   // ── VOTE (pour une amie) ─────────────────────────────────
   if (view === 'vote' && me) {
     if (!voteTarget) { navigate('dashboard'); return null; }
-    if (!gs[voteTarget]) { navigate('dashboard'); return null; }
     const phase = getPhaseFor(gs[voteTarget]);
     return (
       <>
@@ -685,8 +692,8 @@ export default function App() {
 // Animal + Qualité sur une seule page, soumis ensemble
 function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQuality, setSelQuality, submitBothProposals, phase }) {
   const ps = gs[receiver] || {};
-  const aVotes = ps.animalVotes || {};
-  const qVotes = ps.qualityVotes || {};
+  const aVotes = realVotes(ps.animalVotes);
+  const qVotes = realVotes(ps.qualityVotes);
   const others = PLAYERS.filter(p => p !== receiver);
   const aVoted = Object.keys(aVotes).length;
   const qVoted = Object.keys(qVotes).length;
@@ -773,8 +780,8 @@ function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQua
 function RunoffView({ gs, receiver, me, cardType, selRunoff, setSelRunoff, submitRunoff }) {
   const isAnimal = cardType === 'animal';
   const rps = gs[receiver] || {};
-  const proposals = (isAnimal ? rps.animalVotes : rps.qualityVotes) || {};
-  const runoffVotes = (isAnimal ? rps.animalRunoffVotes : rps.qualityRunoffVotes) || {};
+  const proposals = realVotes(isAnimal ? rps.animalVotes : rps.qualityVotes);
+  const runoffVotes = realVotes(isAnimal ? rps.animalRunoffVotes : rps.qualityRunoffVotes);
   const others = PLAYERS.filter(p => p !== receiver);
   const voted = Object.keys(runoffVotes);
   const remaining = others.filter(p => !voted.includes(p));
@@ -835,12 +842,12 @@ function ReceiverWaitView({ gs, name, phase }) {
   const voters = PLAYERS.length - 1;
   const ps = gs[name] || {};
   const isRunoff = phase === 'animal-runoff' || phase === 'quality-runoff';
-  const votes = {
+  const votes = realVotes({
     'animal-propose': ps.animalVotes,
     'animal-runoff': ps.animalRunoffVotes,
     'quality-propose': ps.qualityVotes,
     'quality-runoff': ps.qualityRunoffVotes,
-  }[phase] || {};
+  }[phase]);
   const voted = Object.keys(votes).length;
   const labels = {
     'animal-propose': 'Vos amies choisissent votre animal et votre qualité en secret…',
