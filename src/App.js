@@ -264,6 +264,9 @@ body{font-family:'Nunito',sans-serif;background:var(--ink);color:var(--cream);mi
 .vote-row.todo{border-color:rgba(200,150,10,.3);}
 .vote-row.voted{opacity:.65;}
 .vote-row.done-r{opacity:.4;}
+.vote-row.runoff{border-color:rgba(160,100,220,.5);background:rgba(120,60,200,.1);}
+.vote-row.runoff:hover{border-color:rgba(180,120,240,.7);transform:translateX(4px);}
+.status-runoff{background:rgba(140,80,220,.15);border:1px solid rgba(160,100,220,.5);color:rgba(200,160,255,1);}
 .vote-row-name{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;color:var(--cream);}
 .vote-row-status{font-size:.72rem;padding:.25rem .7rem;border-radius:20px;white-space:nowrap;}
 .status-todo{background:rgba(200,150,10,.15);border:1px solid rgba(200,150,10,.4);color:var(--amber);}
@@ -539,18 +542,19 @@ export default function App() {
                 const pending = getPendingActionsFor(gs, me, p);
                 const phase = getPhaseFor(gs[p]);
                 const isDone = phase === 'done';
+                const isRunoff = phase === 'animal-runoff' || phase === 'quality-runoff';
                 const hasPending = pending.length > 0;
                 const isClickable = hasPending;
                 return (
                   <div key={p}
-                    className={`vote-row${hasPending?' todo clickable':''}${!hasPending&&!isDone?' voted':''}${isDone?' done-r':''}`}
+                    className={`vote-row${hasPending?(isRunoff?' runoff clickable':' todo clickable'):''}${!hasPending&&!isDone?' voted':''}${isDone?' done-r':''}`}
                     onClick={() => { if (isClickable) { navigate('vote', p); } }}>
                     <div>
                       <div className="vote-row-name">{p}</div>
                       <div style={{fontSize:'.7rem',color:'var(--mist)',marginTop:'.15rem'}}>{phaseLabel(p)}</div>
                     </div>
-                    <span className={`vote-row-status${hasPending?' status-todo':isDone?' status-done':' status-voted'}`}>
-                      {isDone ? '🌿 Complet' : hasPending ? '→ Voter' : '✓ Voté'}
+                    <span className={`vote-row-status${hasPending?(isRunoff?' status-runoff':' status-todo'):isDone?' status-done':' status-voted'}`}>
+                      {isDone ? '🌿 Complet' : isRunoff && hasPending ? '🗳️ Vote final' : hasPending ? '→ Voter' : '✓ Voté'}
                     </span>
                   </div>
                 );
