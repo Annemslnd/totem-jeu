@@ -207,8 +207,10 @@ function getPhaseFor(ps) {
   const voters = PLAYERS.length - 1;
   // Done quand les deux winners sont définis
   if (ps.animalWinner && ps.qualityWinner) return 'done';
-  // Runoff quand toutes les propositions sont reçues
-  if (Object.keys(realVotes(ps.animalVotes)).length >= voters) return 'runoff';
+  // Runoff seulement quand animal ET qualité ont tous les deux leurs propositions
+  const aCount = Object.keys(realVotes(ps.animalVotes)).length;
+  const qCount = Object.keys(realVotes(ps.qualityVotes)).length;
+  if (aCount >= voters && qCount >= voters) return 'runoff';
   // Sinon on attend les propositions
   return 'propose';
 }
