@@ -122,7 +122,7 @@ const QUALITY_CARDS = [
   { id:'q45', emoji:'🧩', name:'Ingénieux·se',      desc:"Tu assembles les pièces que personne d'autre ne voyait ensemble." },
   { id:'q46', emoji:'💌', name:'Affectueux·se',     desc:"Tu exprimes ton amour des autres de mille façons sincères." },
   { id:'q47', emoji:'🌿', name:'Équilibré·e',       desc:"Tu trouves l'harmonie entre les différentes dimensions de ta vie." },
-  { id:'q48', emoji:'🔭', name:'Curieux·se d'avenir',desc:"Tu anticipes et prépares avec enthousiasme ce qui vient." },
+  { id:'q48', emoji:'🔭', name:"Curieux·se d'avenir", desc:"Tu anticipes et prépares avec enthousiasme ce qui vient." },
   { id:'q49', emoji:'🛤️', name:'Guide',             desc:"Tu montres le chemin sans imposer ta direction." },
   { id:'q50', emoji:'🌊', name:'Profond·e',         desc:"Tes réflexions touchent des vérités que peu osent explorer." },
   { id:'q51', emoji:'🎶', name:'Harmonieux·se',     desc:"Tu crées de la cohésion là où règne la discorde." },
