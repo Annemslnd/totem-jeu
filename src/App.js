@@ -107,24 +107,16 @@ function getPhaseFor(ps) {
 
 // Ce que ME (le voteur) doit encore faire pour RECEIVER
 function getMyActionFor(gs, me, receiver) {
-  if (me === receiver) return null; // pas d'action sur soi-même ici
+  if (me === receiver) return null;
   const ps = gs[receiver];
-  if (!ps) return null;
+  if (!ps) return 'todo';
   const phase = getPhaseFor(ps);
   if (phase === 'done') return 'done';
-  if (phase === 'animal-propose') {
-    return (ps.animalVotes || {})[me] ? 'voted' : 'todo';
-  }
-  if (phase === 'animal-runoff') {
-    return (ps.animalRunoffVotes || {})[me] ? 'voted' : 'todo';
-  }
-  if (phase === 'quality-propose') {
-    return (ps.qualityVotes || {})[me] ? 'voted' : 'todo';
-  }
-  if (phase === 'quality-runoff') {
-    return (ps.qualityRunoffVotes || {})[me] ? 'voted' : 'todo';
-  }
-  return null;
+  if (phase === 'animal-propose') return (ps.animalVotes || {})[me] ? 'voted' : 'todo';
+  if (phase === 'animal-runoff') return (ps.animalRunoffVotes || {})[me] ? 'voted' : 'todo';
+  if (phase === 'quality-propose') return (ps.qualityVotes || {})[me] ? 'voted' : 'todo';
+  if (phase === 'quality-runoff') return (ps.qualityRunoffVotes || {})[me] ? 'voted' : 'todo';
+  return 'todo'; // fallback : toujours cliquable si non terminé
 }
 
 const css = `
@@ -442,10 +434,11 @@ export default function App() {
                 const isDone = phase === 'done';
                 const hasVoted = action === 'voted';
                 const isTodo = action === 'todo';
-                const isClickable = !isDone && isTodo;
+                const isClickable = !isDone;
                 return (
                   <div key={p}
                     className={`vote-row${isTodo?' todo':''}${hasVoted?' voted':''}${isDone?' done-r':''}`}
+                    style={{ cursor: isClickable ? 'pointer' : 'default' }}
                     onClick={() => { if (isClickable) { setReceiver(p); setView('vote'); } }}>
                     <div>
                       <div className="vote-row-name">{p}</div>
