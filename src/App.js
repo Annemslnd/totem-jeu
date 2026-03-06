@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { db } from "./firebase";
 import { ref, onValue, set } from "firebase/database";
 
-const PLAYERS = ['Anne','Clémence','Laurène','Laurine','Léa','Manon','Marion','Virginie','Wendy'];
+const PLAYERS = ["Anne","Melaine","Adèle"];
 
 const ANIMAL_CARDS = [
   { id:'a1',  emoji:'🦁', name:'Lion',         desc:"Tu inspires confiance et dégages une autorité naturelle." },
