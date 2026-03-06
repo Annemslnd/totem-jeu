@@ -432,15 +432,16 @@ export default function App() {
   };
 
   // Soumettre vote final (runoff) — animal ou qualité séparément
-  const submitRunoff = async (receiver, cardType) => {
-    if (!selRunoff || !gs) return;
+  const submitBothRunoff = async (receiver) => {
+    if (!selAnimal || !selQuality || !gs) return;
     let next = JSON.parse(JSON.stringify(gs));
-    if (cardType === 'animal') next[receiver].animalRunoffVotes = { ...next[receiver].animalRunoffVotes, [me]: selRunoff };
-    else next[receiver].qualityRunoffVotes = { ...next[receiver].qualityRunoffVotes, [me]: selRunoff };
-    next = resolveRunoffIfReady(next, receiver, cardType);
+    next[receiver].animalRunoffVotes = { ...next[receiver].animalRunoffVotes, [me]: selAnimal };
+    next[receiver].qualityRunoffVotes = { ...next[receiver].qualityRunoffVotes, [me]: selQuality };
+    next = resolveRunoffIfReady(next, receiver, 'animal');
+    next = resolveRunoffIfReady(next, receiver, 'quality');
     await saveState(next);
-    showToast('Vote enregistré ! 🗳️');
-    setSelRunoff(null);
+    showToast('Vote final enregistré ! 🗳️');
+    navigate('dashboard');
   };
 
   const resetGame = async () => {
@@ -620,15 +621,14 @@ export default function App() {
                 phase={phase}
               />
             }
-            {/* Phase runoff animal */}
-            {phase === 'animal-runoff' &&
-              <RunoffView gs={gs} receiver={voteTarget} me={me} cardType="animal"
-                selRunoff={selRunoff} setSelRunoff={setSelRunoff} submitRunoff={submitRunoff}/>
-            }
-            {/* Phase runoff qualité */}
-            {phase === 'quality-runoff' &&
-              <RunoffView gs={gs} receiver={voteTarget} me={me} cardType="quality"
-                selRunoff={selRunoff} setSelRunoff={setSelRunoff} submitRunoff={submitRunoff}/>
+            {/* Phase runoff : animal + qualité ensemble */}
+            {(phase === 'animal-runoff' || phase === 'quality-runoff') &&
+              <CombinedRunoffView
+                gs={gs} receiver={voteTarget} me={me}
+                selAnimal={selAnimal} setSelAnimal={setSelAnimal}
+                selQuality={selQuality} setSelQuality={setSelQuality}
+                submitBothRunoff={submitBothRunoff}
+              />
             }
             {phase === 'done' && (
               <div className="wait">
@@ -781,60 +781,100 @@ function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQua
 }
 
 // ── RunoffView ────────────────────────────────────────────
-function RunoffView({ gs, receiver, me, cardType, selRunoff, setSelRunoff, submitRunoff }) {
-  const isAnimal = cardType === 'animal';
+function CombinedRunoffView({ gs, receiver, me, selAnimal, setSelAnimal, selQuality, setSelQuality, submitBothRunoff }) {
   const rps = gs[receiver] || {};
-  const proposals = realVotes(isAnimal ? rps.animalVotes : rps.qualityVotes);
-  const runoffVotes = realVotes(isAnimal ? rps.animalRunoffVotes : rps.qualityRunoffVotes);
+  const aProposals = realVotes(rps.animalVotes);
+  const qProposals = realVotes(rps.qualityVotes);
+  const aRunoff = realVotes(rps.animalRunoffVotes);
+  const qRunoff = realVotes(rps.qualityRunoffVotes);
   const others = PLAYERS.filter(p => p !== receiver);
-  const voted = Object.keys(runoffVotes);
-  const remaining = others.filter(p => !voted.includes(p));
-  const takenIds = getGlobalTakenIds(gs, cardType, receiver);
-  const candidateIds = [...new Set(Object.values(proposals))];
-  const candidates = candidateIds.map(id => ({
-    card: getCard(id),
-    proposedBy: Object.entries(proposals).filter(([,v])=>v===id).map(([k])=>k),
-    runoffCount: Object.values(runoffVotes).filter(v=>v===id).length,
-    taken: takenIds.includes(id),
-  })).sort((a,b) => b.runoffCount-a.runoffCount);
+  const aVoted = Object.keys(aRunoff).length;
+  const remaining = others.filter(p => !aRunoff[p]);
+  const aTaken = getGlobalTakenIds(gs, 'animal', receiver);
+  const qTaken = getGlobalTakenIds(gs, 'quality', receiver);
 
-  const myRunoffVote = runoffVotes[me];
-  if (myRunoffVote) {
-    const c = getCard(myRunoffVote);
+  const makeCandidates = (proposals, runoffVotes, takenIds) => {
+    const ids = [...new Set(Object.values(proposals))];
+    return ids.map(id => ({
+      card: getCard(id),
+      proposedBy: Object.entries(proposals).filter(([,v])=>v===id).map(([k])=>k),
+      voteCount: Object.values(runoffVotes).filter(v=>v===id).length,
+      taken: takenIds.includes(id),
+    })).sort((a,b) => b.voteCount-a.voteCount);
+  };
+
+  const animalCandidates = makeCandidates(aProposals, aRunoff, aTaken);
+  const qualityCandidates = makeCandidates(qProposals, qRunoff, qTaken);
+
+  // Already voted
+  if (aRunoff[me] && qRunoff[me]) {
+    const ca = getCard(aRunoff[me]), cq = getCard(qRunoff[me]);
     return (
       <>
-        <div className="receiver-banner"><h2>Vote final pour {receiver}</h2><p>{isAnimal?'Animal 🐾':'Qualité ✨'} · Étape 2</p></div>
-        <div className="spanel" style={{borderColor:'rgba(200,150,10,.4)'}}>✅ Voté pour : <strong>{c.emoji} {c.name}</strong></div>
-        <div className="spanel"><strong>{voted.length}/{others.length}</strong> votes<div className="pbar"><div className="pfill" style={{width:`${voted.length/others.length*100}%`}}/></div>{remaining.length > 0 ? <span>En attente : {remaining.join(', ')}</span> : <span className="gold">Résultat en cours… 🌿</span>}</div>
+        <div className="receiver-banner"><h2>Vote final pour {receiver}</h2><p>Vous avez déjà voté !</p></div>
+        <div className="spanel" style={{borderColor:'rgba(200,150,10,.4)'}}>
+          ✅ Animal : <strong>{ca.emoji} {ca.name}</strong><br/>
+          ✅ Qualité : <strong>{cq.emoji} {cq.name}</strong>
+        </div>
+        <div className="spanel">
+          <strong>{aVoted}/{others.length}</strong> votes enregistrés
+          <div className="pbar"><div className="pfill" style={{width:`${aVoted/others.length*100}%`}}/></div>
+          {remaining.length > 0 ? <span>En attente : {remaining.join(', ')}</span> : <span className="gold">Résultat en cours… 🌿</span>}
+        </div>
         <div className="wait"><div className="wi">⏳</div><h3>Vote enregistré !</h3><p>En attente des autres joueuses…</p></div>
       </>
     );
   }
 
+  const canSubmit = selAnimal && selQuality;
+
   return (
     <>
       <div className="receiver-banner">
         <h2>Vote final pour {receiver}</h2>
-        <p>Quelle est LA {isAnimal?'force animale dominante':'qualité dominante'} de {receiver} ?</p>
+        <p>Choisissez l'animal <strong>ET</strong> la qualité qui lui correspondent le plus</p>
       </div>
-      <div className="phase-badge">🗳️ Étape 2 · Vote final {isAnimal?'Animal':'Qualité'}</div>
-      <div className="spanel"><strong>{voted.length}/{others.length}</strong> votes<div className="pbar"><div className="pfill" style={{width:`${voted.length/others.length*100}%`}}/></div></div>
-      <div className="stitle" style={{marginTop:0}}>Les cartes proposées</div>
+      <div className="phase-badge">🗳️ Étape 2 · Vote final</div>
+      <div className="spanel">
+        <strong>{aVoted}/{others.length}</strong> votes enregistrés
+        <div className="pbar"><div className="pfill" style={{width:`${aVoted/others.length*100}%`}}/></div>
+      </div>
+
+      <div className="stitle" style={{marginTop:0}}>L'animal qui lui ressemble le plus</div>
       <div className="candidates">
-        {candidates.map(({card:c, proposedBy, runoffCount, taken}) => (
-          <div key={c.id} className={`cand${selRunoff===c.id?' sel':''}${taken?' taken':''}`} onClick={() => !taken && setSelRunoff(c.id)}>
+        {animalCandidates.map(({card:c, proposedBy, voteCount, taken}) => (
+          <div key={c.id} className={`cand${selAnimal===c.id?' sel':''}${taken?' taken':''}`} onClick={() => !taken && setSelAnimal(c.id)}>
             <span className="cand-em">{c.emoji}</span>
             <div className="cand-name">{c.name}</div>
             <div className="cand-desc">{c.desc}</div>
             <div><span className="cand-badge">par {proposedBy.join(', ')}</span></div>
-            {runoffCount > 0 && <div><span className={`cand-badge${runoffCount>=2?' top':''}`}>{runoffCount} vote{runoffCount>1?'s':''}</span></div>}
+            {voteCount > 0 && <div><span className={`cand-badge${voteCount>=2?' top':''}`}>{voteCount} vote{voteCount>1?'s':''}</span></div>}
             {taken && <div><span className="cand-badge red">déjà attribué</span></div>}
           </div>
         ))}
       </div>
+
+      <hr className="divider"/>
+
+      <div className="stitle">La qualité qui lui correspond le plus</div>
+      <div className="candidates">
+        {qualityCandidates.map(({card:c, proposedBy, voteCount, taken}) => (
+          <div key={c.id} className={`cand${selQuality===c.id?' sel':''}${taken?' taken':''}`} onClick={() => !taken && setSelQuality(c.id)}>
+            <span className="cand-em">{c.emoji}</span>
+            <div className="cand-name">{c.name}</div>
+            <div className="cand-desc">{c.desc}</div>
+            <div><span className="cand-badge">par {proposedBy.join(', ')}</span></div>
+            {voteCount > 0 && <div><span className={`cand-badge${voteCount>=2?' top':''}`}>{voteCount} vote{voteCount>1?'s':''}</span></div>}
+            {taken && <div><span className="cand-badge red">déjà attribué</span></div>}
+          </div>
+        ))}
+      </div>
+
       <div className="bgroup">
-        <button className="btn btn-p" disabled={!selRunoff} onClick={() => submitRunoff(receiver, cardType)}>
-          Voter pour cette {isAnimal?'carte animal':'qualité'}
+        <button className="btn btn-p" disabled={!canSubmit} onClick={() => submitBothRunoff(receiver)}>
+          {canSubmit
+            ? `Voter pour ${getCard(selAnimal)?.emoji} ${getCard(selAnimal)?.name} + ${getCard(selQuality)?.emoji} ${getCard(selQuality)?.name}`
+            : 'Choisissez un animal et une qualité'}
         </button>
       </div>
     </>
