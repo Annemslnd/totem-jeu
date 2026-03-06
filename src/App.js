@@ -586,6 +586,7 @@ export default function App() {
   // ── VOTE (pour une amie) ─────────────────────────────────
   if (view === 'vote' && me) {
     if (!voteTarget) { navigate('dashboard'); return null; }
+    if (!gs[voteTarget]) { navigate('dashboard'); return null; }
     const phase = getPhaseFor(gs[voteTarget]);
     return (
       <>
@@ -683,8 +684,9 @@ export default function App() {
 // ── CombinedProposeView ───────────────────────────────────
 // Animal + Qualité sur une seule page, soumis ensemble
 function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQuality, setSelQuality, submitBothProposals, phase }) {
-  const aVotes = gs[receiver].animalVotes || {};
-  const qVotes = gs[receiver].qualityVotes || {};
+  const ps = gs[receiver] || {};
+  const aVotes = ps.animalVotes || {};
+  const qVotes = ps.qualityVotes || {};
   const others = PLAYERS.filter(p => p !== receiver);
   const aVoted = Object.keys(aVotes).length;
   const qVoted = Object.keys(qVotes).length;
@@ -770,8 +772,9 @@ function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQua
 // ── RunoffView ────────────────────────────────────────────
 function RunoffView({ gs, receiver, me, cardType, selRunoff, setSelRunoff, submitRunoff }) {
   const isAnimal = cardType === 'animal';
-  const proposals = (isAnimal ? gs[receiver].animalVotes : gs[receiver].qualityVotes) || {};
-  const runoffVotes = (isAnimal ? gs[receiver].animalRunoffVotes : gs[receiver].qualityRunoffVotes) || {};
+  const rps = gs[receiver] || {};
+  const proposals = (isAnimal ? rps.animalVotes : rps.qualityVotes) || {};
+  const runoffVotes = (isAnimal ? rps.animalRunoffVotes : rps.qualityRunoffVotes) || {};
   const others = PLAYERS.filter(p => p !== receiver);
   const voted = Object.keys(runoffVotes);
   const remaining = others.filter(p => !voted.includes(p));
@@ -830,7 +833,7 @@ function RunoffView({ gs, receiver, me, cardType, selRunoff, setSelRunoff, submi
 // ── ReceiverWaitView ──────────────────────────────────────
 function ReceiverWaitView({ gs, name, phase }) {
   const voters = PLAYERS.length - 1;
-  const ps = gs[name];
+  const ps = gs[name] || {};
   const isRunoff = phase === 'animal-runoff' || phase === 'quality-runoff';
   const votes = {
     'animal-propose': ps.animalVotes,
@@ -867,7 +870,8 @@ function ReceiverWaitView({ gs, name, phase }) {
 
 // ── FinalTotem ────────────────────────────────────────────
 function FinalTotem({ gs, name, goBack }) {
-  const a = getCard(gs[name].animalWinner), q = getCard(gs[name].qualityWinner);
+  const fps = gs[name] || {};
+  const a = getCard(fps.animalWinner), q = getCard(fps.qualityWinner);
   return (
     <>
       <div className="final-wrap">
