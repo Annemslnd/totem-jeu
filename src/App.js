@@ -454,14 +454,14 @@ export default function App() {
     const voters = PLAYERS.length - 1;
     if (ps.qualityWinner) return '🌿 Totem complet';
     if (ps.animalWinner) {
-      const qv = Object.keys(ps.qualityVotes||{}).length;
-      const qrv = Object.keys(ps.qualityRunoffVotes||{}).length;
-      if (qv >= voters) return `Vote final qualité ${qrv}/${voters}`;
-      return `Propositions qualité ${qv}/${voters}`;
+      const qv = Object.keys(realVotes(ps.qualityVotes)).length;
+      const qrv = Object.keys(realVotes(ps.qualityRunoffVotes)).length;
+      if (qv >= voters) return `Vote final ${qrv}/${voters}`;
+      return `Propositions ${qv}/${voters}`;
     }
-    const av = Object.keys(ps.animalVotes||{}).length;
-    const arv = Object.keys(ps.animalRunoffVotes||{}).length;
-    if (av >= voters) return `Vote final animal ${arv}/${voters}`;
+    const av = Object.keys(realVotes(ps.animalVotes)).length;
+    const arv = Object.keys(realVotes(ps.animalRunoffVotes)).length;
+    if (av >= voters) return `Vote final ${arv}/${voters}`;
     return `Propositions ${av}/${voters}`;
   };
 
@@ -486,8 +486,8 @@ export default function App() {
           <div className="brand-icon">🌿</div>
           <div className="brand-name">TOTEM</div>
           <div className="brand-tag">Le jeu qui fait du bien</div>
-          <p style={{color:'var(--mist)',fontSize:'.85rem',maxWidth:340,lineHeight:1.8,marginBottom:'2rem'}}>
-            Qui êtes-vous ? Cliquez sur votre prénom.
+          <p style={{color:'var(--mist)',fontSize:'1.05rem',maxWidth:340,lineHeight:1.9,marginBottom:'2rem',textAlign:'center'}}>
+            Qui êtes-vous ?<br/>Cliquez sur votre prénom.
           </p>
           <div className="players-grid">
             {PLAYERS.map(p => (
@@ -736,12 +736,12 @@ function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQua
     <>
       <div className="receiver-banner">
         <h2>Proposer pour {receiver}</h2>
-        <p>Choisissez un animal <strong>et</strong> une qualité qui lui correspondent</p>
+        <p>Choisissez l'animal <strong>ET</strong> la qualité qui lui correspondent le plus</p>
       </div>
 
       <div className="phase-badge">🐾 Étape 1 · Propositions</div>
 
-      <div className="stitle" style={{marginTop:0}}>Un animal qui lui ressemble</div>
+      <div className="stitle" style={{marginTop:0}}>L'animal qui lui ressemble le plus</div>
       <div className="cards-grid">
         {animalHand.map(c => (
           <div key={c.id} className={`card${selAnimal===c.id?' sel':''}`} onClick={() => setSelAnimal(c.id)}>
@@ -754,7 +754,7 @@ function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQua
 
       <hr className="divider"/>
 
-      <div className="stitle">Une qualité qui lui correspond</div>
+      <div className="stitle">La qualité qui lui correspond le plus</div>
       <div className="cards-grid">
         {qualityHand.map(c => (
           <div key={c.id} className={`card${selQuality===c.id?' sel':''}`} onClick={() => setSelQuality(c.id)}>
