@@ -351,8 +351,11 @@ body{font-family:'Nunito',sans-serif;background:var(--ink);color:var(--cream);mi
 export default function App() {
   const [gs, setGs] = useState(null);
   const [me, setMe] = useState(null);
-  const [view, setView] = useState('login'); // login | dashboard | vote | mytotem | overview
-  const [voteTarget, setVoteTarget] = useState(null);
+  const [nav, setNav] = useState({ view: 'login', target: null });
+  const view = nav.view;
+  const voteTarget = nav.target;
+  const setView = (v) => setNav(n => ({ ...n, view: v }));
+  const navigate = (view, target = null) => setNav({ view, target });
   const [selAnimal, setSelAnimal] = useState(null);
   const [selQuality, setSelQuality] = useState(null);
   const [selRunoff, setSelRunoff] = useState(null);
@@ -414,7 +417,7 @@ export default function App() {
     next[receiver].qualityVotes = { ...next[receiver].qualityVotes, [me]: selQuality };
     await saveState(next);
     showToast('Propositions enregistrées ! 🌿');
-    setView('dashboard');
+    navigate('dashboard');
   };
 
   // Soumettre vote final (runoff) — animal ou qualité séparément
@@ -435,7 +438,7 @@ export default function App() {
     showToast('Partie réinitialisée 🌱');
   };
 
-  const goToDashboard = () => { setView('dashboard'); };
+  const goToDashboard = () => { navigate('dashboard'); };
 
   const phaseLabel = (name) => {
     if (!gs || !gs[name]) return '';
@@ -533,7 +536,7 @@ export default function App() {
                 return (
                   <div key={p}
                     className={`vote-row${hasPending?' todo clickable':''}${!hasPending&&!isDone?' voted':''}${isDone?' done-r':''}`}
-                    onClick={() => { if (isClickable) { setVoteTarget(p); setView('vote'); } }}>
+                    onClick={() => { if (isClickable) { navigate('vote', p); } }}>
                     <div>
                       <div className="vote-row-name">{p}</div>
                       <div style={{fontSize:'.7rem',color:'var(--mist)',marginTop:'.15rem'}}>{phaseLabel(p)}</div>
@@ -582,7 +585,7 @@ export default function App() {
 
   // ── VOTE (pour une amie) ─────────────────────────────────
   if (view === 'vote' && me) {
-    if (!voteTarget) { setView('dashboard'); return null; }
+    if (!voteTarget) { navigate('dashboard'); return null; }
     const phase = getPhaseFor(gs[voteTarget]);
     return (
       <>
