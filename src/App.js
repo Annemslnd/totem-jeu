@@ -435,7 +435,7 @@ export default function App() {
     showToast('Partie réinitialisée 🌱');
   };
 
-  const goToDashboard = () => { setView('dashboard'); setVoteTarget(null); };
+  const goToDashboard = () => { setView('dashboard'); };
 
   const phaseLabel = (name) => {
     if (!gs || !gs[name]) return '';
@@ -581,7 +581,8 @@ export default function App() {
   }
 
   // ── VOTE (pour une amie) ─────────────────────────────────
-  if (view === 'vote' && me && voteTarget) {
+  if (view === 'vote' && me) {
+    if (!voteTarget) { setView('dashboard'); return null; }
     const phase = getPhaseFor(gs[voteTarget]);
     return (
       <>
