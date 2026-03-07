@@ -3,7 +3,7 @@ import { db } from "./firebase";
 import { ref, onValue, set } from "firebase/database";
 
 // ── Joueurs ───────────────────────────────────────────────
-const PLAYERS = ['Anne','Melaine','Adèle'];
+const PLAYERS = ['Anne','Cathy','Melaine','Pénélope','Rednic','Rodrigue'];
 
 // ── 64 Animaux ────────────────────────────────────────────
 const ANIMAL_CARDS = [
