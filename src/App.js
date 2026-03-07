@@ -424,22 +424,22 @@ export default function App() {
   };
 
   // Soumettre animal + qualité en une seule fois (phase propose)
-  const submitBothProposals = async (receiver) => {
-    if (!selAnimal || !selQuality || !gs) return;
+  const submitBothProposals = async (receiver, animal, quality) => {
+    if (!animal || !quality || !gs) return;
     const next = JSON.parse(JSON.stringify(gs));
-    next[receiver].animalVotes = { ...next[receiver].animalVotes, [me]: selAnimal };
-    next[receiver].qualityVotes = { ...next[receiver].qualityVotes, [me]: selQuality };
+    next[receiver].animalVotes = { ...next[receiver].animalVotes, [me]: animal };
+    next[receiver].qualityVotes = { ...next[receiver].qualityVotes, [me]: quality };
     await saveState(next);
     showToast('Propositions enregistrées ! 🌿');
     navigate('dashboard');
   };
 
   // Soumettre vote final (runoff) — animal ou qualité séparément
-  const submitBothRunoff = async (receiver) => {
-    if (!selAnimal || !selQuality || !gs) return;
+  const submitBothRunoff = async (receiver, animal, quality) => {
+    if (!animal || !quality || !gs) return;
     let next = JSON.parse(JSON.stringify(gs));
-    next[receiver].animalRunoffVotes = { ...next[receiver].animalRunoffVotes, [me]: selAnimal };
-    next[receiver].qualityRunoffVotes = { ...next[receiver].qualityRunoffVotes, [me]: selQuality };
+    next[receiver].animalRunoffVotes = { ...next[receiver].animalRunoffVotes, [me]: animal };
+    next[receiver].qualityRunoffVotes = { ...next[receiver].qualityRunoffVotes, [me]: quality };
     next = resolveRunoffIfReady(next, receiver, 'animal');
     next = resolveRunoffIfReady(next, receiver, 'quality');
     await saveState(next);
@@ -767,7 +767,7 @@ function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQua
       </div>
 
       <div className="bgroup">
-        <button className="btn btn-p" disabled={!canSubmit} onClick={() => submitBothProposals(receiver)}>
+        <button className="btn btn-p" disabled={!canSubmit} onClick={() => submitBothProposals(receiver, selAnimal, selQuality)}>
           {canSubmit
             ? `Proposer ${getCard(selAnimal)?.emoji} ${getCard(selAnimal)?.name} + ${getCard(selQuality)?.emoji} ${getCard(selQuality)?.name}`
             : 'Choisissez un animal et une qualité'}
@@ -868,7 +868,7 @@ function CombinedRunoffView({ gs, receiver, me, selAnimal, setSelAnimal, selQual
       </div>
 
       <div className="bgroup">
-        <button className="btn btn-p" disabled={!canSubmit} onClick={() => submitBothRunoff(receiver)}>
+        <button className="btn btn-p" disabled={!canSubmit} onClick={() => submitBothRunoff(receiver, selAnimal, selQuality)}>
           {canSubmit
             ? `Voter pour ${getCard(selAnimal)?.emoji} ${getCard(selAnimal)?.name} + ${getCard(selQuality)?.emoji} ${getCard(selQuality)?.name}`
             : 'Choisissez un animal et une qualité'}
