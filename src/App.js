@@ -157,11 +157,20 @@ function deterministicShuffle(arr, seed) {
   return a;
 }
 
-function getHandFor(receiverName, voterName, cardType, excludedIds = []) {
+function getHandFor(receiverName, voterName, cardType, globalExcluded = []) {
+  // Distribution séquentielle par ordre alphabétique des voteurs
+  // pour garantir qu'aucune carte n'est dans deux mains à la fois
   const pool = cardType === 'animal' ? ANIMAL_CARDS : QUALITY_CARDS;
-  const available = pool.filter(c => !excludedIds.includes(c.id));
-  const shuffled = deterministicShuffle(available, receiverName + voterName + cardType);
-  return shuffled.slice(0, 7);
+  const voters = PLAYERS.filter(p => p !== receiverName).sort();
+  let taken = [...globalExcluded];
+  for (const voter of voters) {
+    const available = pool.filter(c => !taken.includes(c.id));
+    const shuffled = deterministicShuffle(available, receiverName + voter + cardType);
+    const hand = shuffled.slice(0, 7).map(c => c.id);
+    if (voter === voterName) return shuffled.slice(0, 7);
+    taken = [...new Set([...taken, ...hand])];
+  }
+  return [];
 }
 
 // Cartes déjà attribuées en final à d'autres joueuses
@@ -181,6 +190,8 @@ function getAlreadyProposedIds(gameState, receiverName, voterName, cardType) {
     .filter(([voter]) => voter !== voterName)
     .map(([, cardId]) => cardId);
 }
+
+
 
 function initGameState() {
   const s = {};
@@ -722,13 +733,9 @@ function CombinedProposeView({ gs, receiver, me, selAnimal, setSelAnimal, selQua
   // Sinon afficher les deux sélecteurs
   const globalTakenAnimal = getGlobalTakenIds(gs, 'animal', receiver);
   const globalTakenQuality = getGlobalTakenIds(gs, 'quality', receiver);
-  const proposedAnimal = getAlreadyProposedIds(gs, receiver, me, 'animal');
-  const proposedQuality = getAlreadyProposedIds(gs, receiver, me, 'quality');
-  const excludeAnimal = [...new Set([...globalTakenAnimal, ...proposedAnimal])];
-  const excludeQuality = [...new Set([...globalTakenQuality, ...proposedQuality])];
 
-  const animalHand = getHandFor(receiver, me, 'animal', excludeAnimal);
-  const qualityHand = getHandFor(receiver, me, 'quality', excludeQuality);
+  const animalHand = getHandFor(receiver, me, 'animal', globalTakenAnimal);
+  const qualityHand = getHandFor(receiver, me, 'quality', globalTakenQuality);
 
   const canSubmit = selAnimal && selQuality;
 
