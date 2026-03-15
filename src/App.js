@@ -389,7 +389,7 @@ export default function App() {
 
   // Reset selections on navigation
   useEffect(() => {
-    setSelAnimal(null); setSelQuality(null); setSelRunoff(null);
+    setSelAnimal(null); setSelQuality(null);
   }, [view, voteTarget]);
 
   const showToast = useCallback((msg) => {
